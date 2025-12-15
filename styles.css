@@ -11,3 +11,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #meta{margin-top:8px;color:#334155}
 footer{margin-top:18px;color:#667085}
 code{background:#eef2ff;padding:2px 6px;border-radius:4px}
+
+/* Status messages */
+.status{margin-top:10px;padding:8px 10px;border-radius:6px;font-size:14px}
+.status.info{background:#eef2ff;color:#0b63ff}
+.status.success{background:#ecfdf5;color:#027a48}
+.status.error{background:#fff1f2;color:#b91c1c}

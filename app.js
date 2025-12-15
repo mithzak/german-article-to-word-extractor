@@ -8,6 +8,7 @@
   const clearBtn = document.getElementById('clearBtn');
   const meta = document.getElementById('meta');
   const translateBtn = document.getElementById('translateBtn');
+  const statusEl = document.getElementById('status');
 
   // Articles/determiners to combine with the following word (lowercased)
   const ARTICLES = new Set([
@@ -59,6 +60,19 @@
     updateUI(currentStructured);
   }
 
+  function showStatus(message, type = 'info', autoClear = true) {
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    statusEl.className = 'status ' + (type || 'info');
+    if (autoClear) {
+      clearTimeout(showStatus._t);
+      showStatus._t = setTimeout(() => {
+        statusEl.textContent = '';
+        statusEl.className = 'status';
+      }, 6000);
+    }
+  }
+
   function updateUI(structured) {
     const displayList = structured.map(s => s.display + (s.english ? ` — ${s.english}` : ''));
     output.value = displayList.join(', ');
@@ -81,23 +95,32 @@
     if (!noun) return '';
     if (translationCache.has(noun)) return translationCache.get(noun);
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(noun)}&langpair=de|en`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Network');
-      const data = await res.json();
-      // Primary: responseData.translatedText, fallback to matches
-      let translated = '';
-      if (data && data.responseData && data.responseData.translatedText) {
-        translated = data.responseData.translatedText;
-      } else if (data && data.matches && data.matches.length) {
-        translated = data.matches[0].translation || '';
+    // simple retry mechanism with up to 2 attempts
+    const maxAttempts = 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Network ' + res.status);
+        const data = await res.json();
+        // Primary: responseData.translatedText, fallback to matches
+        let translated = '';
+        if (data && data.responseData && data.responseData.translatedText) {
+          translated = data.responseData.translatedText;
+        } else if (data && data.matches && data.matches.length) {
+          translated = data.matches[0].translation || '';
+        }
+        translated = translated.trim();
+        translationCache.set(noun, translated);
+        return translated;
+      } catch (err) {
+        if (attempt === maxAttempts) {
+          translationCache.set(noun, '');
+          showStatus(`Translation failed for "${noun}" (${err.message}).`, 'error');
+          return '';
+        }
+        // brief backoff before retry
+        await new Promise(r => setTimeout(r, 300 * attempt));
       }
-      translated = translated.trim();
-      translationCache.set(noun, translated);
-      return translated;
-    } catch (e) {
-      translationCache.set(noun, '');
-      return '';
     }
   }
 
@@ -114,6 +137,7 @@
     // Translate sequentially in small batches to be gentle on API
     for (let i = 0; i < nouns.length; i++) {
       const n = nouns[i];
+      showStatus(`Translating ${i + 1}/${nouns.length}: ${n}`, 'info', false);
       const eng = await translateNoun(n);
       // map back to currentStructured items
       for (const item of currentStructured) {
@@ -121,6 +145,7 @@
       }
       updateUI(currentStructured);
     }
+    showStatus('Translation complete', 'success');
     translateBtn.disabled = false;
   });
 
@@ -156,12 +181,32 @@
     }
   });
 
-  downloadCsvBtn.addEventListener('click', () => {
-    const structured = extractStructuredWords(input.value);
-    if (structured.length === 0) return;
-    // CSV with columns: English, GermanNoun, Article, ExampleSentence
+  downloadCsvBtn.addEventListener('click', async () => {
+    // ensure we have extracted data
     if ((!currentStructured || currentStructured.length === 0) && input.value) extract();
-    const structuredFinal = currentStructured || [];
+    const structured = currentStructured || [];
+    if (structured.length === 0) return;
+    // If translations missing, attempt to translate them now before download
+    const missing = structured.filter(s => !s.english);
+    const nounsToTranslate = Array.from(new Set(missing.map(s => s.noun)));
+    if (nounsToTranslate.length > 0) {
+      showStatus(`Translating ${nounsToTranslate.length} missing entries before download...`, 'info', false);
+      for (let i = 0; i < nounsToTranslate.length; i++) {
+        const n = nounsToTranslate[i];
+        showStatus(`Translating ${i + 1}/${nounsToTranslate.length}: ${n}`, 'info', false);
+        const eng = await translateNoun(n);
+        for (const item of currentStructured) {
+          if (item.noun === n) item.english = eng;
+        }
+        updateUI(currentStructured);
+      }
+      showStatus('All missing translations attempted', 'info');
+    }
+    doDownload(currentStructured);
+  });
+
+  function doDownload(structuredFinal) {
+    // CSV with columns: English, GermanNoun, Article, ExampleSentence
     const header = ['English','GermanNoun','Article','ExampleSentence'];
     const rows = structuredFinal.map(it => [ it.english || '', it.noun, it.article || '', '' ]);
     const all = [header, ...rows];
@@ -179,7 +224,8 @@
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-  });
+    showStatus('CSV download ready', 'success');
+  }
 
   clearBtn.addEventListener('click', () => {
     input.value = '';

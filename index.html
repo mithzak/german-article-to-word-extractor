@@ -9,7 +9,7 @@
 <body>
   <main>
     <h1>German Word Extractor</h1>
-    <p>Paste your German article into the large textarea. The app will extract unique words, combine "der/die/das" with the following word, and provide a comma-separated list plus CSV export.</p>
+    <p>Paste your German article into the large textarea. The app will extract unique words, combine "der/die/das" with the following word, and provide a comma-separated list plus CSV export to use in <a href="//ankiweb.net">Anki Web</a>.</p>
 
     <label for="inputText">Article</label>
     <textarea id="inputText" placeholder="Fügen Sie hier Ihren Artikel ein..." aria-label="Article input"></textarea>
@@ -27,6 +27,7 @@
       <label for="outputText">Unique words (comma separated)</label>
       <textarea id="outputText" readonly aria-label="Extracted words"></textarea>
       <div id="meta"></div>
+      <div id="status" class="status" aria-live="polite"></div>
     </div>
 
     <footer>
