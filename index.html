@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>German Word Extractor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>German Word Extractor</h1>
+    <p>Paste your German article into the large textarea. The app will extract unique words, combine "der/die/das" with the following word, and provide a comma-separated list plus CSV export.</p>
+
+    <label for="inputText">Article</label>
+    <textarea id="inputText" placeholder="Fügen Sie hier Ihren Artikel ein..." aria-label="Article input"></textarea>
+
+    <div class="controls">
+      <button id="extractBtn">Extract Words</button>
+      <button id="copyBtn">Copy</button>
+      <button id="copyExcelBtn">Copy for Excel</button>
+      <button id="downloadCsvBtn">Download CSV</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+
+    <div class="results">
+      <label for="outputText">Unique words (comma separated)</label>
+      <textarea id="outputText" readonly aria-label="Extracted words"></textarea>
+      <div id="meta"></div>
+    </div>
+
+    <footer>
+      <small>Combines articles: <code>der</code>, <code>die</code>, <code>das</code> with the next word.</small>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
